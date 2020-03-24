@@ -1,0 +1,688 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": 
+       {
+    "vmName": 
+        {
+        "type": "string",
+		"defaultValue": "AEnDevMail01",
+            "maxLength": 15,
+            "metadata": {
+                "description": "The VM name. AEnDevMail01 = Azure - Europe North - Development - Email application - server #1"}
+        },
+    "osVersion": 
+            {
+            "type": "string",
+			"defaultValue" : "7.3",
+			"allowedValues" : ["7.6", "7.3" ,"7.2" ,"6.9","6.8" ],
+            "metadata": {"description": "RedHat version for the VM. This will pick a fully patched image of this given version. Allowed values: 7.6, 7.3, 7.2, 6.9, 6.8 and 6.7"}
+            },
+    "vmSizeLink": 
+            {
+            "type": "string",
+			"defaultValue" : "https://docs.microsoft.com/en-us/azure/virtual-machines/linux/sizes-general",
+            "metadata": {"description": "Link to Azure VM size wiki"}
+            },
+    "vmSize": 
+        {
+        "type": "string",
+		"defaultValue": "Standard_A1_v2",
+		"allowedValues": [ "Standard_A1_v2","Standard_A2_v2","Standard_A4_v2","Standard_A8_v2","Standard_A2m_v2","Standard_A4m_v2","Standard_A8m_v2","Standard_B1s","Standard_B1ms","Standard_B2s","Standard_B2ms","Standard_B4ms","Standard_B8ms",
+"Standard_D2s_v3","Standard_D4s_v3","Standard_D8s_v3","Standard_D16s_v3","Standard_D32s_v3","Standard_D64s_v3","Standard_D2_v3","Standard_D4_v3","Standard_D8_v3","Standard_D16_v3","Standard_D32_v3","Standard_D64_v3","Standard_DS1_v2","Standard_DS2_v2",
+"Standard_DS3_v2","Standard_DS4_v2","Standard_DS5_v2","Standard_DC2s","Standard_DC4s" ],
+        "metadata": 
+            {
+            "description": "The size(T-shirt) for the VM. https://docs.microsoft.com/en-us/azure/virtual-machines/windows/sizes-general",
+            "SNC::Parameter::Metadata": {"referenceType": "Microsoft.Compute/virtualMachines/vmSize"}
+            }
+        },
+    "vmLocation": 
+        {
+        "type": "string",
+		"defaultValue" : "North Europe",
+		"allowedValues" : [ "North Europe", "West Europe" ],
+        "metadata": 
+            {
+            "description": "Location or datacenter where the VM will be placed.",
+            "SNC::Parameter::Metadata": {"referenceType": "Microsoft.Azure/region"}
+            }
+        },
+	"sizeOfDiskInGB": 
+        {
+        "type": "string",
+        "defaultValue" : "32",
+		"allowedValues" : [ "32", "64", "128", "256", "512", "1024", "2048", "4095", "8192", "16384" ],
+        "metadata": {"description": "The Data Disk size for the VM in GBs."}
+        },
+    "subnetName": 
+        {
+        "type": "string",
+		"allowedValues" : [ 
+            "aenappsn-lifedev1",
+            "AEnAppSn-PnCDev1",
+            "AEnAppSn-SGIDev1",
+            "aenappsn-shrdev1",
+            "AEnAppSn-CorpDev1",
+            "AEnAppSn-RiskDev1",
+            "AEnAppSn-InfrDev1",
+            "aenappsn-lifepoc1",
+            "aendmzsn-lifedev1",
+            "AEnDmzSn-PnCDev1",
+            "AEnDmzSn-SgiDev1",
+            "AEnDmzSn-ShrDev1",
+            "aendmzsn-corpdev1",
+            "AEnDmzSn-RiskDev1",
+            "AEnDmzSn-InfraDev1",
+            "aendmzsn-lifepoc1"
+        ],
+        "metadata": 
+            {
+            "description": "The Subnet for the VM. Please choose the right environment & network location (Dev/poc, app/dmz)",
+            "SNC::Parameter::Metadata": {"referenceType": "Microsoft.Network/subNets"}
+            }
+        },
+    "publicIPRequired": 
+        {
+        "type": "string",
+		"defaultValue": "no",
+        "allowedValues" : [ "yes","no" ],
+        "metadata": {"description": "Does this VM needs a public IP?"}
+        },
+    "joinAvailabilitySet": 
+        {
+        "type": "string",
+		"defaultValue": "no",
+        "allowedValues" : [ "yes","no" ],
+        "metadata": {"description": "Does this VM needs to join an Availability Set?"}
+        },
+    "existingAvailabilitySetName": 
+        {
+        "type": "string",
+		"defaultValue": "tbd",
+        "minLength": 1,
+        "maxLength": 80,
+        "metadata": 
+            {
+            "description": "Existing Availability Set Name located under the same resource group and location as the VM.",
+            "SNC::Parameter::Metadata": {"referenceType": "Microsoft.Compute/availabilitySets"}
+            }
+        }, 
+	"Owner": 
+        {
+        "type": "string",
+        "metadata": {"description": "Email of the server owner"}
+        },
+    "project": 
+        {
+        "type": "string",
+        "metadata": {"description": "Project/Application name."}
+        },
+    "Environment": 
+        {
+        "type": "string",
+        "defaultValue": "Development",	
+        "allowedValues": [ "Test", "Development", "Poc"  ],
+        "metadata": {"description": "Lifecycle environment the VM belongs to"}
+        },
+    "application": 
+        {
+        "type": "string",
+        "defaultValue": "",
+        "metadata": {"description": "Type of the hosted application: Database (DB), Application Server (AS), Web Server (WEB), ..."}
+        },
+    "departmentName": 
+        {
+        "type": "string",
+        "defaultValue": "P&C",
+        "allowedValues" : [ "P&C", "Life", "SGI", "Shared", "Infrastructure", "Corporate", "Risk" ],
+        "metadata": {"description": "BU owning the server."}
+        },
+	"SCORCustomer": 
+        {
+        "type": "string",
+        "defaultValue": "",
+        "metadata": {"description": "For a specific SCOR Customer"}
+        },
+	"Compliance": 
+        {
+        "type": "string",
+        "defaultValue": "",
+        "allowedValues": [ "", "GDPR", "PCI", "MAS" ],
+        "metadata": {"description": "VM in scope of Compliance requirements"}
+        },
+	"Confidential": 
+        {
+        "type": "string",
+        "defaultValue": "Unclassified",
+        "allowedValues" : [ "Classified", "Restricted", "Unclassified" ],
+        "metadata": {"description": "Security classification of data on this server."}
+        },
+        "DXCAutoShutdownStartup": 
+        {
+        "type": "string",
+        "defaultValue": "",
+        "allowedValues" : [ "", "MF7to7" ],
+        "metadata": {"description": "Autoshutdown / startup VM M-F, 7 to 7."}
+        },
+        "accountSasProperties": 
+		    {
+            "type": "object",
+            "defaultValue": {
+            "signedServices": "bt",
+            "signedPermission": "acluw",
+            "signedStart": "2019-01-01T00:00:01Z",
+            "signedExpiry": "2029-03-01T00:00:01Z",
+            "signedResourceTypes": "co",
+            "signedProtocol": "https,http",
+            "keyToSign": "key1"
+          }
+      },     
+    "existingBackupPolicy": 
+        {
+        "type": "string",
+		"defaultValue": "ScorVMBackup",
+        "allowedValues" : [ "ScorVMBackup" ],
+        "metadata": {"description": "Backup policy to be used to backup VMs. Backup Policy defines the schedule of the backup and how long to retain backup copies."}
+        }
+		},
+    "variables": 
+		{
+		"ResourceEnvironment": "[substring(resourceGroup().name,3,3)]",
+        "NetworkLocation": "[substring(resourceGroup().name,sub(length(resourceGroup().name),5),3)]",
+        "RgEnd": "[last(split(resourceGroup().name,'-'))]",
+		"availabilitySet": {"id": "[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',toLower(resourceGroup().name),'/providers/Microsoft.Compute/availabilitySets/', parameters('existingAvailabilitySetName'))]"},
+
+		"imagePublisher": "RedHat",
+        "imageOffer": "RHEL",
+         "rootUsername": "dxcadmin",
+        "rootPassword": "[concat('Qd9', uniqueString(resourceGroup().id))]", 
+		"storageAccountType": "Standard_LRS",
+		"OSDiskName": "[concat(parameters('vmName'), '-osDisk')]",
+		"DataDiskName": "[concat(parameters('vmName'), '-dataDisk0')]",
+
+		"nicName": "[concat(parameters('vmName'),'-vNic')]",
+		"existingvNetResourceGroup": "AEnnonprodRg-Network",
+		"existingvNetName": "[concat('Aen',variables('NetworkLocation'),'Vn-',variables('ResourceEnvironment'),'1')]",
+		"vnetID": "[resourceId(variables('existingvNetResourceGroup'), 'Microsoft.Network/virtualNetworks', variables('existingvNetName'))]",
+		"subnetRef": "[concat(variables('vnetID'),'/subnets/', parameters('subnetName'))]",
+		"vmPublicIP": "[concat(parameters('vmName'),'-publicIP')]",
+		"publicIPAddress": {"id": "[concat('/subscriptions/',subscription().subscriptionId,'/resourceGroups/',toLower(resourceGroup().name),'/providers/Microsoft.Network/publicIPAddresses/',variables('vmPublicIP'))]"},
+    
+		"scriptURL": "https://dxcazuretools.blob.core.windows.net/installers/csInstaller.sh",
+		"osType": "[concat(toLower(variables('imageOffer')), substring(parameters('osVersion'), 0, 1))]",
+  
+		"backupFabric": "Azure",
+		"v2VmContainer": "iaasvmcontainer;iaasvmcontainerv2;",
+		"v2Vm": "vm;iaasvmcontainerv2;" ,
+		"KeyVaultName": "DXC-Maint-KV-SCOR-9b66",
+		"KeyVaultRG": "DXC-Maint-RG",
+		"domainToJoin": "azure.scor.com",
+		"existingBootDiagStorageResourceGroup": "[resourceGroup().name]",
+        "existingBootDiagStorageName": "[concat('Aen',variables('ResourceEnvironment'),'st',variables('RgEnd'))]",
+		"workspaceId": "44af61cc-4935-4a28-89be-0d0d416523fb",
+		"workspaceKey": "8VyCEE7d4Usb1tKmGlXrmOXXbGo5CxdDGdvGh//Mv5S403Tzp23EGNJu4fNgvH49JROUSHnKnR6JgE+azW075w==",
+		"csCID": "78E121C5FEFD4FFC9472245CA73944E4-ED",
+		"existingRecoveryServicesVaultRG": "[resourceGroup().name]",
+        "existingRecoveryServicesVault": "[concat('Aen',variables('ResourceEnvironment'),'Rv-',variables('RgEnd'))]",
+		"csUninstallPW": "M1m@xpr1me"
+		},
+    "resources": 
+        [
+		{
+        "apiVersion": "2018-05-01",
+        "name": "SasTokenNestedTemplate",
+        "type": "Microsoft.Resources/deployments",                
+        "properties": {
+            "mode" : "Incremental",
+            "template": {
+            "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+            "contentVersion": "1.0.0.0",
+            "parameters": {},
+            "variables": {},
+            "resources": [],
+            "outputs": {
+                "storageAccountSasToken": {
+                    "type": "string",
+                    "value": "[listAccountSas(resourceId(variables('existingBootDiagStorageResourceGroup'), 'Microsoft.Storage/storageAccounts', variables('existingBootDiagStorageName')), '2018-07-01', parameters('accountSasProperties')).accountSasToken]"
+                
+                        }
+                    }
+                }
+            }
+        },
+		{
+			"apiVersion": "2017-06-01",
+			"name" : "LocalAdminDetailstoKV",
+			"type" : "Microsoft.Resources/deployments",
+			"resourceGroup": "[variables('KeyVaultRG')]",
+            "dependsOn": [ "[concat('Microsoft.Resources/deployments/', 'SasTokenNestedTemplate')]" ] ,
+			"properties": {
+				"mode": "Incremental",
+				"template" : 
+				{
+					"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+					"contentVersion": "1.0.0.0",
+					"parameters": {},
+					"variables": {},
+					"resources" : [
+						{
+							"type": "Microsoft.KeyVault/vaults/secrets",
+							"name": "[concat(variables('KeyVaultName'), '/', parameters('vmName'),'-rootuser')]",
+							"apiVersion": "2018-02-14",
+							"properties": {
+								"contentType": "Username",
+								"value" : "[variables('rootUsername')]",
+								"attributes": {
+									"enabled": true
+								}
+							}
+						},
+						{
+							"type": "Microsoft.KeyVault/vaults/secrets",
+							"name": "[concat(variables('KeyVaultName'),'/',parameters('vmName'),'-rootpass')]",
+							"apiVersion": "2018-02-14",
+							"properties": {
+								"contentType": "pw",
+								"value" : "[variables('rootpassword')]",
+								"attributes": {
+									"enabled": true
+								}
+							}
+                        },
+						{
+                            "type": "Microsoft.KeyVault/vaults/secrets",
+                            "name": "[concat(variables('KeyVaultName'),'/',parameters('vmName'),'-sasToken')]",
+                            "apiVersion": "2018-02-14",
+                            "properties": {
+                            "contentType": "sasToken",
+                                   "value": "[reference('SasTokenNestedTemplate', '2018-05-01').outputs.storageAccountSasToken.value]",
+                                   "attributes": { "enabled": true }
+						}
+                        }
+					]
+				}
+			}
+		},
+            {
+            "condition": "[equals(parameters('publicIPRequired'),'yes')]",
+            "apiVersion": "2018-11-01",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "name": "[concat(variables('vmPublicIP'))]",
+            "location": "[parameters('vmLocation')]",
+            "properties": {"publicIPAllocationMethod": "Dynamic"}
+            }, 
+            {
+            "apiVersion": "2018-11-01",
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('nicName')]",
+            "location": "[parameters('vmLocation')]",
+             "DependsOn": ["[resourceId('Microsoft.Network/publicIPAddresses', variables('vmPublicIP'))]"],
+            "properties": 
+                {
+                "ipConfigurations": 
+                    [
+                        {
+                        "name": "Prod",
+                        "properties": 
+                            {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {"id": "[variables('subnetRef')]"},
+                            "publicIPAddress": "[if(equals(parameters('publicIPRequired'),'yes'), variables('publicIPAddress'), json('null'))]"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+            "apiVersion": "2018-10-01",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[parameters('vmName')]",
+            "location": "[parameters('vmLocation')]",
+            "dependsOn": ["[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"],
+            "tags": 
+                {
+                "DXC_AutoDeploy": "True",
+               "Owner": "[parameters('Owner')]",
+				"Project": "[parameters('project')]",
+				"Environment": "[parameters('Environment')]",
+				"Application": "[parameters('application')]",
+				"DepartmentName": "[parameters('departmentName')]",	
+				"Customer": "[parameters('SCORCustomer')]",
+				"Confidential": "[parameters('Confidential')]",
+				"Compliance": "[parameters('Compliance')]",
+                "PatchingSchedule": "Sunday-after-patch-Tuesday-quarterly",
+                "DXCAutoShutdownStartup": "[parameters('DXCAutoShutdownStartup')]"
+                },
+            "properties": 
+                {
+                "availabilitySet": "[if(equals(parameters('joinAvailabilitySet'),'yes'), variables('availabilitySet'), json('null'))]",
+                "hardwareProfile": {"vmSize": "[parameters('vmSize')]"},
+                "osProfile": 
+                    {
+                    "computerName": "[parameters('vmName')]",
+                    "adminUsername": "[variables('rootUsername')]",
+                    "adminPassword": "[variables('rootPassword')]"
+                    },
+                "storageProfile": 
+                    {
+                    "imageReference": 
+                        {
+                        "publisher": "[variables('imagePublisher')]",
+                        "offer": "[variables('imageOffer')]",
+                        "sku": "[if(greaterOrEquals(parameters('osVersion'),'7.6'),'7-RAW',parameters('osVersion'))]",
+                        "version": "latest"
+                        },
+                    "osDisk": 
+                        {
+                        "name": "[variables('osDiskName')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "managedDisk": {"storageAccountType": "[variables('storageAccountType')]"}
+                        },
+                    "dataDisks": 
+                        [
+                            {
+                            "lun": 1,
+                            "name": "[variables('DataDiskName')]",
+                            "createOption": "Empty",
+                            "caching": "None",
+                            "diskSizeGB": "[parameters('sizeOfDiskInGB')]",
+                            "managedDisk": {"storageAccountType": "[variables('storageAccountType')]"}
+                            }
+                        ]
+                    },
+                "networkProfile": {"networkInterfaces": [{"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName'))]"}]},
+                "diagnosticsProfile": 
+                    {
+                    "bootDiagnostics": 
+                        {
+                        "enabled": "true",
+                        "storageUri": "[reference(resourceId(variables('existingBootDiagStorageResourceGroup'), 'Microsoft.Storage/storageAccounts', variables('existingBootDiagStorageName')), '2015-06-15').primaryEndpoints['blob']]"
+                        }
+                    }
+    
+                }
+            },
+            {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name":"[concat(parameters('vmName'), '/OMSAgent')]",
+            "apiVersion": "2018-10-01",
+            "location": "[parameters('vmLocation')]",
+            "dependsOn": ["[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"],
+            "properties": 
+                {
+                "publisher": "Microsoft.EnterpriseCloud.Monitoring",
+                "type": "OmsAgentForLinux",
+                "typeHandlerVersion": "1.7",
+				"autoUpgradeMinorVersion": true,
+				"settings": {"workspaceId": "[variables('workspaceId')]"},
+                "protectedSettings": {"workspaceKey": "[variables('workspaceKey')]"}
+                }
+            },
+            {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+        "apiVersion": "2018-10-01",
+        "location": "[parameters('vmLocation')]",
+        "dependsOn": [ "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'), '/extensions/OMSAgent')]",
+        "[concat('Microsoft.Resources/deployments/', 'SasTokenNestedTemplate')]" 
+       ],
+        "name": "[concat(parameters('vmName'), '/LinuxDiagnostic')]",      
+        "properties": {
+            "publisher": "Microsoft.Azure.Diagnostics",
+            "type": "LinuxDiagnostic",
+            "autoUpgradeMinorVersion": true,
+            "typeHandlerVersion": "3.0",   
+            "protectedSettings": {
+              "storageAccountName": "[variables('existingBootDiagStorageName')]",
+              "storageAccountSasToken": "[reference('SasTokenNestedTemplate', '2018-05-01').outputs.storageAccountSasToken.value]", 
+              "storageAccountEndPoint": "https://core.windows.net",
+              "sinksConfig": {}    
+              },  
+              "settings": {
+                "StorageAccount": "[variables('existingBootDiagStorageName')]",
+                "ladCfg": {
+                    "diagnosticMonitorConfiguration": {
+                        "eventVolume": "Medium", 
+                        "metrics": {
+                        "metricAggregation": [
+                            {
+                            "scheduledTransferPeriod": "PT1H"
+                            }, 
+                            {
+                            "scheduledTransferPeriod": "PT1M"
+                            }
+                        ], 
+                        "resourceId": "[resourceId('Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+                        },                             
+                        "performanceCounters": {                              
+                        "performanceCounterConfiguration": [  
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Memory available",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "availablememory",
+                                "counterSpecifier": "/builtin/memory/availablememory",
+                                "type": "builtin",
+                                "unit": "Bytes"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Swap percent used",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "percentusedswap",
+                                "counterSpecifier": "/builtin/memory/percentusedswap",
+                                "type": "builtin",
+                                "unit": "Percent"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Memory used",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "usedmemory",
+                                "counterSpecifier": "/builtin/memory/usedmemory",
+                                "type": "builtin",
+                                "unit": "Bytes"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Page reads",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "pagesreadpersec",
+                                "counterSpecifier": "/builtin/memory/pagesreadpersec",
+                                "type": "builtin",
+                                "unit": "CountPerSecond"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Swap available",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "availableswap",
+                                "counterSpecifier": "/builtin/memory/availableswap",
+                                "type": "builtin",
+                                "unit": "Bytes"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Swap percent available",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "percentavailableswap",
+                                "counterSpecifier": "/builtin/memory/percentavailableswap",
+                                "type": "builtin",
+                                "unit": "Percent"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Mem. percent available",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "percentavailablememory",
+                                "counterSpecifier": "/builtin/memory/percentavailablememory",
+                                "type": "builtin",
+                                "unit": "Percent"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Pages",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "pagespersec",
+                                "counterSpecifier": "/builtin/memory/pagespersec",
+                                "type": "builtin",
+                                "unit": "CountPerSecond"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Swap used",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "usedswap",
+                                "counterSpecifier": "/builtin/memory/usedswap",
+                                "type": "builtin",
+                                "unit": "Bytes"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Memory percentage",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "percentusedmemory",
+                                "counterSpecifier": "/builtin/memory/percentusedmemory",
+                                "type": "builtin",
+                                "unit": "Percent"
+                            },
+                            {
+                                "annotation": [
+                                    {
+                                        "displayName": "Page writes",
+                                        "locale": "en-us"
+                                    }
+                                ],
+                                "class": "memory",
+                                "counter": "pageswrittenpersec",
+                                "counterSpecifier": "/builtin/memory/pageswrittenpersec",
+                                "type": "builtin",
+                                "unit": "CountPerSecond"
+                            }
+                        ]
+                    },
+                    "syslogEvents": {
+                        "syslogEventConfiguration": {
+                            "LOG_AUTH": "LOG_DEBUG",
+                            "LOG_AUTHPRIV": "LOG_DEBUG",
+                            "LOG_CRON": "LOG_DEBUG",
+                            "LOG_DAEMON": "LOG_DEBUG",
+                            "LOG_FTP": "LOG_DEBUG",
+                            "LOG_KERN": "LOG_DEBUG",
+                            "LOG_LOCAL0": "LOG_DEBUG",
+                            "LOG_LOCAL1": "LOG_DEBUG",
+                            "LOG_LOCAL2": "LOG_DEBUG",
+                            "LOG_LOCAL3": "LOG_DEBUG",
+                            "LOG_LOCAL4": "LOG_DEBUG",
+                            "LOG_LOCAL5": "LOG_DEBUG",
+                            "LOG_LOCAL6": "LOG_DEBUG",
+                            "LOG_LOCAL7": "LOG_DEBUG",
+                            "LOG_LPR": "LOG_DEBUG",
+                            "LOG_MAIL": "LOG_DEBUG",
+                            "LOG_NEWS": "LOG_DEBUG",
+                            "LOG_SYSLOG": "LOG_DEBUG",
+                            "LOG_USER": "LOG_DEBUG",
+                            "LOG_UUCP": "LOG_DEBUG"
+                        }
+                    }
+                },
+                  "sampleRateInSeconds": 15
+                }
+              }                  
+            }        
+        }, 
+            {
+            "apiVersion": "2018-10-01",            
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name":"[concat(parameters('vmName'), '/CrowdStrikeSensor')]",
+            "location": "[parameters('vmLocation')]",
+            "dependsOn": 
+                [
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]",
+                "[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'), '/extensions/OMSAgent')]"
+                ],
+            "tags": {"displayName": "CrowdStrikeSensor"},
+            "properties": 
+                {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {"fileUris": ["[variables('scriptURL')]"]},
+                "protectedSettings": {"commandToExecute": "[concat('bash ./csInstaller.sh ', variables('osType'), ' ', variables('csCID'))]"}
+                }
+            },
+            {
+            "apiVersion": "2017-05-10",
+            "name": "[concat(parameters('vmName'), '-' , 'BackupIntent')]",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[variables('existingRecoveryServicesVaultRG')]",
+            "properties": 
+                {
+                "mode": "Incremental",
+                "template": 
+                    {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": 
+                        [
+                          {
+                            "name": "[concat(variables('existingRecoveryServicesVault'), '/', variables('backupFabric'), '/', variables('v2Vm'),resourceGroup().name,';', parameters('vmName'))]",
+                            "apiVersion": "2017-07-01",
+                            "type": "Microsoft.RecoveryServices/vaults/backupFabrics/backupProtectionIntent",
+                            "properties": {
+                              "friendlyName": "[concat(parameters('vmName'), 'BackupIntent')]",
+                              "protectionIntentItemType": "AzureResourceItem",
+                              "policyId": "[resourceId(variables('existingRecoveryServicesVaultRG'), 'Microsoft.RecoveryServices/vaults/backupPolicies', variables('existingRecoveryServicesVault'), parameters('existingBackupPolicy'))]",
+                              "sourceResourceId": "[resourceId(resourceGroup().name, 'Microsoft.Compute/virtualMachines', parameters('vmName'))]"
+                            }
+                          }
+                        ]
+                    }
+                },
+                "dependsOn": ["[concat('Microsoft.Compute/virtualMachines/', parameters('vmName'))]"]
+            }
+        ],
+    "outputs": {}
+    }
